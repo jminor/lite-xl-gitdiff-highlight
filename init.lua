@@ -51,11 +51,14 @@ local function update_diff()
 	core.log_quiet("updating diff for " .. current_doc)
 
 	if current_file.is_in_repo ~= true then
-		local is_in_repo = process.start({"git", "ls-files", "--error-unmatch", current_doc})
-		is_in_repo:wait(100)
-		is_in_repo = is_in_repo:returncode()
-		is_in_repo = is_in_repo == 0
-		current_file.is_in_repo = is_in_repo
+		local proc = process.start({"git", "ls-files", "--recurse-submodules", current_doc}, {
+			stdin = process.REDIRECT_DISCARD,
+			stdout = process.REDIRECT_PIPE,
+			stderr = process.REDIRECT_STDOUT
+		})
+		proc:wait(100)
+		local output = proc:read_stdout()
+		current_file.is_in_repo = output and #output > 1
 	end
 	if not current_file.is_in_repo then
 		core.log_quiet("file ".. current_doc .." is not in a git repository")
@@ -63,7 +66,9 @@ local function update_diff()
   end
 
 	local max_diff_size = system.get_file_info(current_doc).size * config.max_diff_size
-	local diff_proc = process.start({"git", "diff", "HEAD", current_doc})
+	local folder = common.dirname(current_doc)
+	local filename = common.basename(current_doc)
+	local diff_proc = process.start({"bash", "-c", string.format("cd %q; git diff HEAD %q", folder, filename)})
 	diff_proc:wait(100)
 	local raw_diff = diff_proc:read_stdout(max_diff_size)
 	local parsed_diff = gitdiff.changed_lines(raw_diff)
