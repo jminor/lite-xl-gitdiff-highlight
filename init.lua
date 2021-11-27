@@ -68,6 +68,8 @@ local function update_diff()
 	local max_diff_size = system.get_file_info(current_doc).size * config.max_diff_size
 	local folder = common.dirname(current_doc)
 	local filename = common.basename(current_doc)
+	-- TODO: On Windows use cmd instead of bash? or chdir instead?
+	--       command = { "cmd", "/c", string.format("(%s) 2>&1", opt.command) }
 	local diff_proc = process.start({"bash", "-c", string.format("cd %q; git diff HEAD %q", folder, filename)})
 	diff_proc:wait(100)
 	local raw_diff = diff_proc:read_stdout(max_diff_size)
